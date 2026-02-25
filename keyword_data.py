@@ -1,7 +1,9 @@
 import json
 from datetime import datetime
+import mysql.connector
 
 products=[]
+base_path = r"C:\Users\hemanshu.marwadi\Desktop\Swiggy_json_data\keyword.json"
 basepath="https://instamart-media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,h_600/"
 
 def input_file(json_file):
@@ -41,7 +43,55 @@ def convert_to_json(processed_data):
     print("data extracted successfully")
 
 
-file=input("enter file name: ")
-d=input_file(file)
+
+d=input_file(base_path)
 extracted=parser(d)
 convert_to_json(extracted)
+
+conn = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="actowiz",
+    database="Extract_Json_Databse"
+)
+
+cursor = conn.cursor()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS Swiggy_instamart2(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    Prod_id VARCHAR(50) UNIQUE,
+    Prod_price DECIMAL(10,2),
+    Prod_quantity VARCHAR(100),
+    Image_URL JSON,
+    Discount_per INT,
+    mrp FLOAT,
+    In_stock BOOLEAN
+    )
+""")
+
+for row in extracted:
+    cursor.execute("""
+    INSERT IGNORE INTO Swiggy_instamart2(
+        name,
+        Prod_id,
+        Prod_price,
+        Prod_quantity,
+        Image_URL,
+        Discount_per,
+        mrp,
+        In_stock
+    ) VALUES(%s,%s,%s,%s,%s,%s,%s,%s)
+    """ ,(
+        row.get('name'),
+        row.get('Prod_id'),
+        row.get('Prod_price'),
+        row.get('Prod_quantity'),
+        json.dumps(row.get('Image_URL')),
+        row.get('Discount_per'),
+        row.get('mrp'),
+        row.get('In_stock')
+    ))
+
+conn.commit()
+print("Data Inserted")
